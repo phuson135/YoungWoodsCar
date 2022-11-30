@@ -821,8 +821,16 @@ def add_drivetrain(V, cfg):
             V.add(TwoWheelSteeringThrottle(),
                   inputs=['throttle', 'angle'],
                   outputs=['left/throttle', 'right/throttle'])
-
-        if cfg.DRIVE_TRAIN_TYPE == "PWM_STEERING_THROTTLE":
+        if cfg.DRIVE_TRAIN_TYPE == "ETHERNET_API":
+            import Ethernet
+            dt = cfg.ETHERNET_API
+            ethernet_control = Ethernet(left_max=dt["STEERING_LEFT"],
+                                        right_max=dt["STEERING_RIGHT"],
+                                        throttle_max=dt["THROTTLE_FORWARD"],
+                                        throttle_stop=dt["THROTTLE_STOPPED"])
+            V.add(ethernet_control, inputs=['throttle','angle'])
+            
+        elif cfg.DRIVE_TRAIN_TYPE == "PWM_STEERING_THROTTLE":
             #
             # drivetrain for RC car with servo and ESC.
             # using a PwmPin for steering (servo)

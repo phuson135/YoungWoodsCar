@@ -58,12 +58,23 @@ CAMERA_TYPE = "CVCAM"   # (PICAM|WEBCAM|CVCAM|CSIC|V4L|D435|MOCK|IMAGE_LIST)
 # # "DC_TWO_WHEEL" uses HBridge in 2-pin mode to control two drive motors, one on the left, and one on the right.
 # # "DC_TWO_WHEEL_L298N" using HBridge in 3-pin mode to control two drive motors, one of the left and one on the right.
 # # "MOCK" no drive train.  This can be used to test other features in a test rig.
+# # "ETHERNET_API" no drive train.  This can be used to test other features in a test rig.
 # # (deprecated) "SERVO_HBRIDGE_PWM" use ServoBlaster to output pwm control from the PiZero directly to control steering,
 # #                                  and HBridge for a drive motor.
 # # (deprecated) "PIGPIO_PWM" uses Raspberrys internal PWM
 # # (deprecated) "I2C_SERVO" uses PCA9685 servo controller to control a steering servo and an ESC, as in a standard RC car
 # #
-# DRIVE_TRAIN_TYPE = "PWM_STEERING_THROTTLE"
+DRIVE_TRAIN_TYPE = "ETHERNET_API"
+
+ETHERNET_API = {
+    "STEERING_LEFT":6,
+    "STEERING_RIGHT":9,
+    "THROTTLE_FORWARD":5,
+    "THROTTLE_STOPPED":0,
+}
+
+
+
 # 
 # #
 # # PWM_STEERING_THROTTLE
