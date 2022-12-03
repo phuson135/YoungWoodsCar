@@ -54,6 +54,7 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
     and inputs. The framework handles passing named outputs to parts
     requesting the same named input.
     """
+    print(cfg.AUTO_RECORD_ON_THROTTLE)
     logger.info(f'PID: {os.getpid()}')
     if cfg.DONKEY_GYM:
         #the simulator will use cuda and then we usually run out of resources
@@ -822,9 +823,9 @@ def add_drivetrain(V, cfg):
                   inputs=['throttle', 'angle'],
                   outputs=['left/throttle', 'right/throttle'])
         if cfg.DRIVE_TRAIN_TYPE == "ETHERNET_API":
-            import Ethernet
+            import ethernet
             dt = cfg.ETHERNET_API
-            ethernet_control = Ethernet(left_max=dt["STEERING_LEFT"],
+            ethernet_control = ethernet.Ethernet(left_max=dt["STEERING_LEFT"],
                                         right_max=dt["STEERING_RIGHT"],
                                         throttle_max=dt["THROTTLE_FORWARD"],
                                         throttle_stop=dt["THROTTLE_STOPPED"])

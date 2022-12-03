@@ -2,18 +2,7 @@ from EthernetAPI.client import Client
 from EthernetAPI.message_types import RC_ORDER
 import donkeycar as dk
 class Ethernet(object):
-    """
-    Motor controlled with an 'mini' L298N hbridge using 2 PwmPins,
-    one for forward pwm and for reverse pwm.
-    Chosen with configuration DRIVETRAIN_TYPE=DC_TWO_WHEEL
-    See pins.py for pin provider implementations.
 
-    See https://www.instructables.com/Tutorial-for-Dual-Channel-DC-Motor-Driver-Board-PW/
-    for how an L298N mini-hbridge modules is wired.
-    This driver can also be used for an L9110S/HG7881 motor driver.  See
-    https://electropeak.com/learn/interfacing-l9110s-dual-channel-h-bridge-motor-driver-module-with-arduino/
-    for how an L9110S motor driver module is wired.
-    """
 
     def __init__(self, left_max, right_max, throttle_max, throttle_stop):
         self.client = Client()
@@ -44,7 +33,7 @@ class Ethernet(object):
         self.client.send_message(RC_ORDER, "0|7.5")
         self.client.disconnect()
     
-    def map_range_float(x, X_min, X_max, Y_min, Y_max):
+    def map_range_float(self, x, X_min, X_max, Y_min, Y_max):
         '''
         Same as map_range but supports floats return, rounded to 2 decimal places
         '''
