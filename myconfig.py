@@ -79,3 +79,6 @@ ETHERNET_API = {
     "THROTTLE_FORWARD":5,
     "THROTTLE_STOPPED":0,
 }
+
+AUTO_RECORD_ON_THROTTLE = True      #if true, we will record whenever throttle is not zero. if false, you must manually toggle recording with some other trigger. Usually circle button on joystick.
+CONTROLLER_TYPE = 'xbox'            #(ps3|ps4|xbox|pigpio_rc|nimbus|wiiu|F710|

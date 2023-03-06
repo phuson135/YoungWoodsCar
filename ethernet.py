@@ -19,18 +19,19 @@ class Ethernet(object):
         :param throttle:float throttle value in range -1 to 1,
                         where 1 is full forward and -1 is full backwards.
         """
+        
         if (throttle >=0):
-            throttle = self.map_range_float(throttle, 0, 1, self.throttle_stop, self.throttle_max)
+            throttle = self.map_range_float(throttle, 0, .5, self.throttle_stop, self.throttle_max)
         else:
             throttle = 0
-            
+        # print(throttle)
         steering = self.map_range_float(steering, -1, 1, self.left_max, self.right_max)
         
         message = f"{throttle}|{steering}"
         self.client.send_message(RC_ORDER, message)
 
     def shutdown(self):
-        self.client.send_message(RC_ORDER, "0|7.5")
+        self.client.send_message(RC_ORDER, "0|128")
         self.client.disconnect()
     
     def map_range_float(self, x, X_min, X_max, Y_min, Y_max):
