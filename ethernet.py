@@ -1,17 +1,21 @@
 from EthernetAPI.client import Client
 from EthernetAPI.message_types import RC_ORDER
 import donkeycar as dk
+import logging
+logger = logging.getLogger(__name__)
 class Ethernet(object):
 
 
     def __init__(self, left_max, right_max, throttle_max, throttle_stop):
         self.client = Client()
-        self.client.connect("192.168.137.1", 60006)
+        self.connected = self.client.connect("192.168.137.1", 60006)
         self.left_max = left_max
         self.right_max = right_max
         self.throttle_max = throttle_max
         self.throttle_stop = throttle_stop
-        self.client.send_message(RC_ORDER, "0|7.5")
+        self.throttle_old = None
+        self.steering_old = None
+   #     self.client.send_message(RC_ORDER, "0|128")
 
     def run(self, throttle, steering) -> None:
         """
@@ -20,15 +24,21 @@ class Ethernet(object):
                         where 1 is full forward and -1 is full backwards.
         """
         
-        if (throttle >=0):
-            throttle = self.map_range_float(throttle, 0, .5, self.throttle_stop, self.throttle_max)
-        else:
-            throttle = 0
-        # print(throttle)
+        throttle = self.map_range_float(throttle, -.5, .5, self.throttle_stop, self.throttle_max)
         steering = self.map_range_float(steering, -1, 1, self.left_max, self.right_max)
-        
         message = f"{throttle}|{steering}"
-        self.client.send_message(RC_ORDER, message)
+        # print(f"{steering}|{throttle}")
+        if self.connected:
+            try:
+                self.client.send_message(RC_ORDER, message)
+            except:
+                logger.warning('ERROR: FAIL TO SEND MESSAGE.')
+                self.client.disconnect()
+                self.client = Client()
+                self.connected = self.client.connect("192.168.137.1", 60006)
+        else:
+            self.connected = self.client.connect("192.168.137.1", 60006)
+
 
     def shutdown(self):
         self.client.send_message(RC_ORDER, "0|128")

@@ -1,10 +1,6 @@
 #!/bin/bash
 echo --------------------------- SSH INTO BBB: debian@192.168.137.1 ---------------------------
 
-if [[ $1 = connect ]]
-then
-	sshpass -p temppwd ssh debian@192.168.137.1 
-fi
 if [[ $1 = drive ]]
 then
 sshpass -p temppwd ssh -T debian@192.168.137.1 <<EOL
@@ -13,3 +9,15 @@ sshpass -p temppwd ssh -T debian@192.168.137.1 <<EOL
     python3 drive.py
 EOL
 fi
+
+if [[ $1 = kill ]]
+then
+sshpass -p temppwd ssh -T debian@192.168.137.1 <<EOL
+    clear
+    lsof -ti :60006 | xargs kill -9
+EOL
+fi
+
+sshpass -p 'temppwd' ssh -t debian@192.168.137.1 'cd rcPWM ; bash --login'
+export SSHPASS='temppwd'
+sshpass -e ssh -t debian@192.168.137.1 "CDTO=rcPWM exec bash --login"
