@@ -84,7 +84,7 @@ class MyJoystickController(JoystickController):
             self.bbb_launched = subprocess.Popen(cmd, shell=True)
             logger.info("Sucessfully launched a new ./BBB drive. "+str(self.bbb_launched.pid))
         except:
-            logger.warning("Fail to launch a new ./BBB drive.")
+            logger.info("Fail to launch a new ./BBB drive.")
             pass
         
     def close_bbb_drive(self):
@@ -93,6 +93,7 @@ class MyJoystickController(JoystickController):
             cmd = "nohup ./BBB  kill > output.txt 2>&1 &"
             proc = subprocess.Popen(cmd, shell=True)
             logger.info("Sucessfully kill it. ")
+            time.sleep(2)
             proc.kill()
             os.remove("output.txt")
             with open("output.txt", "w") as f:
@@ -100,7 +101,7 @@ class MyJoystickController(JoystickController):
             self.bbb_launched = None
             
         except:
-            logger.warning("Fail to kill ./BBB.")
+            logger.info("Fail to kill ./BBB.")
             pass
     
     def custom_emergency_stop(self):

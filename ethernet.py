@@ -3,6 +3,7 @@ from EthernetAPI.message_types import RC_ORDER
 import donkeycar as dk
 import logging
 logger = logging.getLogger(__name__)
+COUNTER = 3
 class Ethernet(object):
 
 
@@ -15,6 +16,7 @@ class Ethernet(object):
         self.throttle_stop = throttle_stop
         self.throttle_old = None
         self.steering_old = None
+        self.counter = 0
    #     self.client.send_message(RC_ORDER, "0|128")
 
     def run(self, throttle, steering) -> None:
@@ -32,12 +34,18 @@ class Ethernet(object):
             try:
                 self.client.send_message(RC_ORDER, message)
             except:
-                logger.warning('ERROR: FAIL TO SEND MESSAGE.')
+                logger.info('ERROR: FAIL TO SEND MESSAGE.')
                 self.client.disconnect()
                 self.client = Client()
                 self.connected = self.client.connect("192.168.137.1", 60006)
         else:
-            self.connected = self.client.connect("192.168.137.1", 60006)
+            global COUNTER
+            if self.counter == COUNTER:
+                self.connected = self.client.connect("192.168.137.1", 60006)
+                self.counter = 0
+            else:
+                self.counter +=1
+            
 
 
     def shutdown(self):

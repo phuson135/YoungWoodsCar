@@ -6,7 +6,7 @@ then
 sshpass -p temppwd ssh -T debian@192.168.137.1 <<EOL
     sleep 2
     cd rcPWM/
-    python3 drive.py
+    python3 drive.py --log DEBUG
 EOL
 fi
 
