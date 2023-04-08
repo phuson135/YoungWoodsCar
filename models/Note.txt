@@ -1,0 +1,4 @@
+parkRightAllData: Trained using RightData1 + RightData2
+parkForwardUpdate: Trained using parkLeft1 + RightData1 + RightData2
+parkForwardFinal: Trained using RightData1 + RightData2 + parkLeftDataUpdated
+parkLeftOnly: Trained using parkLeftDataUpdated

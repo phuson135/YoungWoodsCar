@@ -5,6 +5,7 @@ import logging
 import time
 from sh import tail
 import os
+import Jetson.GPIO as GPIO
 
 logger = logging.getLogger(__name__)
 class MyJoystick(Joystick):
@@ -45,6 +46,32 @@ class MyJoystickController(JoystickController):
     #A Controller object that maps inputs to actions
     def __init__(self, *args, **kwargs):
         self.bbb_launched = None
+        GPIO.cleanup()
+        GPIO.setmode(GPIO.BOARD)
+        chan1 = 16
+        chan2 = 18
+        GPIO.setup(chan1, GPIO.IN)
+        GPIO.setup(chan2, GPIO.IN)
+
+        # define callback function
+        def callback_fn(channel):
+            print(f"Channel-{channel} triggered: Value - {GPIO.input(channel)}")
+            val1 = GPIO.input(chan1)
+            val2 = GPIO.input(chan2)
+            print(f"Vals-{val1} {val2}")
+            if val1 == 0 and val2 == 0:
+                self.toggle_mode_user()
+            elif val1 == 0 and val2 == 1:
+                self.toggle_mode_auto()
+            elif val1 == 1 and val2 == 0:
+                self.toggle_mode_auto()
+            elif val1 == 1 and val2 == 1:
+                self.toggle_mode_stop()
+
+        # add rising edge detection
+        GPIO.add_event_detect(chan1, GPIO.BOTH, callback=callback_fn, bouncetime=200)
+        GPIO.add_event_detect(chan2, GPIO.BOTH, callback=callback_fn, bouncetime=200)
+        
         super(MyJoystickController, self).__init__(*args, **kwargs)
 
 
@@ -137,5 +164,42 @@ class MyJoystickController(JoystickController):
             'right_trigger': self.magnitude(reversed = True),
             'left_trigger': self.magnitude(),
         }
+        
+    def toggle_mode_user(self):
+        '''
+        switch modes to
+        user: human controlled steer and throttle
+        '''
+        if self.mode == 'user':
+            logger.info(f'Stay on mode: {self.mode}')
+            return
+        self.mode = 'user'
+        self.mode_latch = self.mode
+        logger.info(f'Try switching to Idle - at mode: {self.mode}')
+        
+    def toggle_mode_auto(self):
+        '''
+        switch modes to 
+        local: ai steering, ai throttle
+        '''
+        if self.mode == 'local':
+            logger.info(f'Stay on mode: {self.mode}')
+            return
+        self.mode = 'local'
+        self.mode_latch = self.mode
+        logger.info(f'Try switching to Autonomous - at mode: {self.mode}')
+        
+    def toggle_mode_stop(self):
+        '''
+        switch modes to 
+        stop: stop
+        '''
+        if self.mode == 'stop':
+            logger.info(f'Stay on mode: {self.mode}')
+            return
+        # self.mode = 'stop'
+        # self.mode_latch = self.mode
+        logger.info(f'Try switching to Stop - at mode: {self.mode}')
+        
 
 
