@@ -197,8 +197,8 @@ class MyJoystickController(JoystickController):
         if self.mode == 'stop':
             logger.info(f'Stay on mode: {self.mode}')
             return
-        # self.mode = 'stop'
-        # self.mode_latch = self.mode
+        self.mode = 'stop'
+        self.mode_latch = self.mode
         logger.info(f'Try switching to Stop - at mode: {self.mode}')
         
 

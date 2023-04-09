@@ -4,9 +4,8 @@ import donkeycar as dk
 import logging
 logger = logging.getLogger(__name__)
 COUNTER = 3
+
 class Ethernet(object):
-
-
     def __init__(self, left_max, right_max, throttle_max, throttle_stop):
         self.client = Client()
         self.connected = self.client.connect("192.168.137.1", 60006)
@@ -46,8 +45,6 @@ class Ethernet(object):
             else:
                 self.counter +=1
             
-
-
     def shutdown(self):
         self.client.send_message(RC_ORDER, "0|128")
         self.client.disconnect()
