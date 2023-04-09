@@ -446,7 +446,7 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
                        pilot_throttle * cfg.AI_THROTTLE_MULT \
                            if pilot_throttle else 0.0
             elif mode == 'stop':
-                return 0, 0
+                return 0, -.5
 
     V.add(DriveMode(),
           inputs=['user/mode', 'user/angle', 'user/throttle',
@@ -759,7 +759,6 @@ def add_camera(V, cfg, camera_type):
 
         V.add(camA, outputs=['cam/image_array_a'], threaded=True)
         V.add(camB, outputs=['cam/image_array_b'], threaded=True)
-
         from donkeycar.parts.image import StereoPair
 
         V.add(StereoPair(), inputs=['cam/image_array_a', 'cam/image_array_b'],
@@ -783,7 +782,6 @@ def add_camera(V, cfg, camera_type):
         cam = get_camera(cfg)
         if cam:
             V.add(cam, inputs=inputs, outputs=outputs, threaded=threaded)
-
 
 def add_odometry(V, cfg):
     """
