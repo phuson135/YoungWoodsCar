@@ -69,9 +69,9 @@ class MyJoystickController(JoystickController):
             if val1 == 0 and val2 == 0:
                 self.toggle_mode_user()
             elif val1 == 0 and val2 == 1:
-                self.toggle_mode_auto()
+                self.toggle_mode_local()
             elif val1 == 1 and val2 == 0:
-                self.toggle_mode_auto()
+                self.toggle_mode_local()
             elif val1 == 1 and val2 == 1:
                 self.toggle_mode_stop()
 
@@ -203,11 +203,12 @@ class MyJoystickController(JoystickController):
         if self.mode == 'user':
             logger.info(f'Stay on mode: {self.mode}')
             return
+        GPIO.output(self.COMMAND_PIN, GPIO.LOW)
         self.mode = 'user'
         self.mode_latch = self.mode
         logger.info(f'Try switching to Idle - at mode: {self.mode}')
         
-    def toggle_mode_auto(self):
+    def toggle_mode_local(self):
         '''
         switch modes to 
         local: ai steering, ai throttle
@@ -215,6 +216,7 @@ class MyJoystickController(JoystickController):
         if self.mode == 'local':
             logger.info(f'Stay on mode: {self.mode}')
             return
+        GPIO.output(self.COMMAND_PIN, GPIO.LOW)
         self.mode = 'local'
         self.mode_latch = self.mode
         logger.info(f'Try switching to Autonomous - at mode: {self.mode}')
@@ -239,8 +241,7 @@ class MyJoystickController(JoystickController):
         if self.mode == 'user_reverse':
             logger.info(f'Stay on mode: {self.mode}')
             return
-        if self.mode != 'local_reverse':
-            GPIO.output(self.COMMAND_PIN, GPIO.HIGH)
+        GPIO.output(self.COMMAND_PIN, GPIO.HIGH)  
         self.mode = 'user_reverse'
         self.mode_latch = self.mode
         logger.info(f'Try switching to Stop - at mode: {self.mode}')
@@ -253,6 +254,7 @@ class MyJoystickController(JoystickController):
         if self.mode == 'local_reverse':
             logger.info(f'Stay on mode: {self.mode}')
             return
+        GPIO.output(self.COMMAND_PIN, GPIO.HIGH)
         self.mode = 'local_reverse'
         self.mode_latch = self.mode
         logger.info(f'Try switching to Stop - at mode: {self.mode}')

@@ -350,11 +350,11 @@ def drive(cfg, model_path=None, model_path2=None, use_joystick=False, model_type
         # these parts will reload the model file, but only when ai is running
         # so we don't interrupt user driving
         V.add(FileWatcher(model_path), outputs=['modelfile/dirty'],
-              run_condition="ai_running")
+              run_condition="ai_running_1")
         V.add(DelayedTrigger(100), inputs=['modelfile/dirty'],
-              outputs=['modelfile/reload'], run_condition="ai_running")
+              outputs=['modelfile/reload'], run_condition="ai_running_1")
         V.add(TriggeredCallback(model_path, model_reload_cb),
-              inputs=["modelfile/reload"], run_condition="ai_running")
+              inputs=["modelfile/reload"], run_condition="ai_running_1")
 
         #
         # collect inputs to model for inference
@@ -448,11 +448,11 @@ def drive(cfg, model_path=None, model_path2=None, use_joystick=False, model_type
         # these parts will reload the model file, but only when ai is running
         # so we don't interrupt user driving
         V.add(FileWatcher(model_path2), outputs=['modelfile/dirty'],
-              run_condition="ai_running")
+              run_condition="ai_running_2")
         V.add(DelayedTrigger(100), inputs=['modelfile/dirty'],
-              outputs=['modelfile/reload'], run_condition="ai_running")
+              outputs=['modelfile/reload'], run_condition="ai_running_2")
         V.add(TriggeredCallback(model_path2, model_reload_cb),
-              inputs=["modelfile/reload"], run_condition="ai_running")
+              inputs=["modelfile/reload"], run_condition="ai_running_2")
 
         #
         # collect inputs to model for inference
@@ -535,6 +535,8 @@ def drive(cfg, model_path=None, model_path2=None, use_joystick=False, model_type
         def run(self, mode,
                     user_angle, user_throttle,
                     pilot_angle, pilot_throttle):
+            if GPIO.input(cfg.REQUEST_PIN) == 0:
+                    return 0, -.5
             if mode == 'user':
                 return user_angle, user_throttle
 
@@ -553,7 +555,9 @@ def drive(cfg, model_path=None, model_path2=None, use_joystick=False, model_type
                 else:
                     return user_angle, user_throttle
             elif mode == 'local_reverse':
-                return 0, -.5
+                return pilot_angle if pilot_angle else 0.0, \
+                       pilot_throttle * cfg.AI_THROTTLE_MULT \
+                           if pilot_throttle else 0.0
 
     V.add(DriveMode(),
           inputs=['user/mode', 'user/angle', 'user/throttle',
@@ -571,11 +575,17 @@ def drive(cfg, model_path=None, model_path2=None, use_joystick=False, model_type
         A bool part to let us know when ai is running.
         '''
         def run(self, mode):
-            if mode == "user":
-                return False
-            return True
+            ai1 = False
+            ai2 = False
+            if mode == "local_angle" or mode == "local":
+                ai1 = True
+            elif mode == "local_reverse":
+                ai2 = True
+            else:
+                return False, False
+            return ai1, ai2
 
-    V.add(AiRunCondition(), inputs=['user/mode'], outputs=['ai_running'])
+    V.add(AiRunCondition(), inputs=['user/mode'], outputs=['ai_running_1', 'ai_running_2'])
 
     # Ai Recording
     class AiRecordingCondition:
