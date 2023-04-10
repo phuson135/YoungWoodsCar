@@ -44,20 +44,27 @@ class MyJoystick(Joystick):
 
 class MyJoystickController(JoystickController):
     #A Controller object that maps inputs to actions
-    def __init__(self, *args, **kwargs):
+    def __init__(self, chan1=16, chan2=18, 
+                 request=22, command=24, *args, **kwargs):
         self.bbb_launched = None
-        GPIO.cleanup()
+
+        self.chan1 = chan1
+        self.chan2 = chan2
+        self.REQUEST_PIN = request
+        self.COMMAND_PIN = command
+        
+        GPIO.cleanup([self.chan1, self.chan2, self.COMMAND_PIN, self.REQUEST_PIN])
         GPIO.setmode(GPIO.BOARD)
-        chan1 = 16
-        chan2 = 18
-        GPIO.setup(chan1, GPIO.IN)
-        GPIO.setup(chan2, GPIO.IN)
+        GPIO.setup(self.chan1, GPIO.IN)
+        GPIO.setup(self.chan2, GPIO.IN)
+        GPIO.setup(self.COMMAND_PIN, GPIO.OUT)
+        GPIO.setup(self.REQUEST_PIN, GPIO.IN)
 
         # define callback function
         def callback_fn(channel):
             print(f"Channel-{channel} triggered: Value - {GPIO.input(channel)}")
-            val1 = GPIO.input(chan1)
-            val2 = GPIO.input(chan2)
+            val1 = GPIO.input(self.chan1)
+            val2 = GPIO.input(self.chan2)
             print(f"Vals-{val1} {val2}")
             if val1 == 0 and val2 == 0:
                 self.toggle_mode_user()
@@ -69,8 +76,8 @@ class MyJoystickController(JoystickController):
                 self.toggle_mode_stop()
 
         # add rising edge detection
-        GPIO.add_event_detect(chan1, GPIO.BOTH, callback=callback_fn, bouncetime=200)
-        GPIO.add_event_detect(chan2, GPIO.BOTH, callback=callback_fn, bouncetime=200)
+        GPIO.add_event_detect(self.chan1, GPIO.BOTH, callback=callback_fn, bouncetime=200)
+        GPIO.add_event_detect(self.chan2, GPIO.BOTH, callback=callback_fn, bouncetime=200)
         
         super(MyJoystickController, self).__init__(*args, **kwargs)
 
@@ -150,9 +157,9 @@ class MyJoystickController(JoystickController):
             'b_button' : self.toggle_manual_recording,
             'x_button' : self.erase_last_N_records,
             'y_button' : self.custom_emergency_stop,
-            'right_shoulder' : self.increase_max_throttle,
-            'left_shoulder' : self.decrease_max_throttle,
-            'M_button' : self.toggle_constant_throttle,
+            'right_shoulder' : self.toggle_mode_user,
+            'left_shoulder' : self.toggle_mode_user_reverse,
+            'M_button' : self.toggle_mode_stop,
             'Xbox_button' : self.launch_bbb_drive,
             'V_button': self.read_output_file,
         }
@@ -164,6 +171,29 @@ class MyJoystickController(JoystickController):
             'right_trigger': self.magnitude(reversed = True),
             'left_trigger': self.magnitude(),
         }
+        
+    def toggle_mode(self):
+        '''
+        switch modes from:
+        user: human controlled steer and throttle
+        local_angle: ai steering, human throttle
+        local: ai steering, ai throttle
+        '''
+        if self.mode == 'user':
+            self.mode = 'local_angle'
+        elif self.mode == 'local_angle':
+            self.mode = 'local'
+        elif self.mode == 'local':
+            self.mode = 'user'
+        # Reverse
+        elif self.mode == 'user_reverse':
+            self.mode = 'local_reverse'
+        elif self.mode == 'local_reverse':
+            self.mode = 'user_reverse'
+        else:
+            self.mode = 'stop'
+        self.mode_latch = self.mode
+        logger.info(f'new mode: {self.mode}')
         
     def toggle_mode_user(self):
         '''
@@ -198,6 +228,32 @@ class MyJoystickController(JoystickController):
             logger.info(f'Stay on mode: {self.mode}')
             return
         self.mode = 'stop'
+        self.mode_latch = self.mode
+        logger.info(f'Try switching to Stop - at mode: {self.mode}')
+        
+    def toggle_mode_user_reverse(self):
+        '''
+        switch modes to 
+        stop: stop
+        '''
+        if self.mode == 'user_reverse':
+            logger.info(f'Stay on mode: {self.mode}')
+            return
+        if self.mode != 'local_reverse':
+            GPIO.output(self.COMMAND_PIN, GPIO.HIGH)
+        self.mode = 'user_reverse'
+        self.mode_latch = self.mode
+        logger.info(f'Try switching to Stop - at mode: {self.mode}')
+    
+    def toggle_mode_local_reverse(self):
+        '''
+        switch modes to 
+        stop: stop
+        '''
+        if self.mode == 'local_reverse':
+            logger.info(f'Stay on mode: {self.mode}')
+            return
+        self.mode = 'local_reverse'
         self.mode_latch = self.mode
         logger.info(f'Try switching to Stop - at mode: {self.mode}')
         

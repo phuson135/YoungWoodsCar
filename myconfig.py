@@ -8,10 +8,10 @@
 # The update operation will not touch this file.
 # """
 
-# import os
+import os
 # 
 # #PATHS
-# CAR_PATH = PACKAGE_PATH = os.path.dirname(os.path.realpath(__file__))
+CAR_PATH = PACKAGE_PATH = os.path.dirname(os.path.realpath(__file__))
 # DATA_PATH = os.path.join(CAR_PATH, 'data')
 # MODELS_PATH = os.path.join(CAR_PATH, 'models')
 # 
@@ -82,3 +82,11 @@ ETHERNET_API = {
 
 AUTO_RECORD_ON_THROTTLE = False      #if true, we will record whenever throttle is not zero. if false, you must manually toggle recording with some other trigger. Usually circle button on joystick.
 CONTROLLER_TYPE = 'custom'            #(ps3|ps4|xbox|pigpio_rc|nimbus|wiiu|F710|
+DATA_PATH_2 = os.path.join(CAR_PATH, 'dataR')
+
+# GPIO PINS
+REQUEST_PIN = 22
+COMMAND_PIN = 24
+
+FOB_STATE_PIN1 = 16
+FOB_STATE_PIN2 = 18

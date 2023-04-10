@@ -3,7 +3,7 @@
 Scripts to drive a donkey 2 car
 
 Usage:
-    manage.py (drive) [--model=<model>] [--js] [--type=(linear|categorical)] [--camera=(single|stereo)] [--meta=<key:value> ...] [--myconfig=<filename>]
+    manage.py (drive) [--model=<model>] [--model2=<model>] [--js] [--type=(linear|categorical)] [--camera=(single|stereo)] [--meta=<key:value> ...] [--myconfig=<filename>]
     manage.py (train) [--tubs=tubs] (--model=<model>) [--type=(linear|inferred|tensorrt_linear|tflite_linear)]
 
 Options:
@@ -38,12 +38,13 @@ from donkeycar.parts.launch import AiLaunch
 from donkeycar.parts.explode import ExplodeDict
 from donkeycar.parts.transform import Lambda
 from donkeycar.utils import *
+import Jetson.GPIO as GPIO
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
-def drive(cfg, model_path=None, use_joystick=False, model_type=None,
+def drive(cfg, model_path=None, model_path2=None, use_joystick=False, model_type=None,
           camera_type='single', meta=[]):
     """
     Construct a working robotic vehicle from many parts. Each part runs as a
@@ -54,6 +55,7 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
     and inputs. The framework handles passing named outputs to parts
     requesting the same named input.
     """
+    GPIO.setwarnings(False)
     print(cfg.AUTO_RECORD_ON_THROTTLE)
     logger.info(f'PID: {os.getpid()}')
     if cfg.DONKEY_GYM:
@@ -400,6 +402,104 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
             inputs = ['cam/image_array_trans'] + inputs[1:]
 
         V.add(kl, inputs=inputs, outputs=outputs, run_condition='run_pilot')
+        
+    if model_path2:
+        # If we have a model for reverse, create an appropriate Keras part
+        kl2 = dk.utils.get_model_by_type(model_type, cfg)
+
+        #
+        # get callback function to reload the model
+        # for the configured model format
+        #
+        model_reload_cb = None
+
+        if '.h5' in model_path2 or '.trt' in model_path2 or '.tflite' in \
+                model_path2 or '.savedmodel' in model_path2 or '.pth':
+            # load the whole model with weigths, etc
+            load_model(kl, model_path2)
+
+            def reload_model(filename):
+                load_model(kl, filename)
+
+            model_reload_cb = reload_model
+
+        elif '.json' in model_path2:
+            # when we have a .json extension
+            # load the model from there and look for a matching
+            # .wts file with just weights
+            load_model_json(kl, model_path2)
+            weights_path = model_path2.replace('.json', '.weights')
+            load_weights(kl, weights_path)
+
+            def reload_weights(filename):
+                weights_path = filename.replace('.json', '.weights')
+                load_weights(kl, weights_path)
+
+            model_reload_cb = reload_weights
+
+        else:
+            print("ERR>> Unknown extension type on model file!!")
+            return
+
+        # this part will signal visual LED, if connected
+        V.add(FileWatcher(model_path2, verbose=True),
+              outputs=['modelfile/modified'])
+
+        # these parts will reload the model file, but only when ai is running
+        # so we don't interrupt user driving
+        V.add(FileWatcher(model_path2), outputs=['modelfile/dirty'],
+              run_condition="ai_running")
+        V.add(DelayedTrigger(100), inputs=['modelfile/dirty'],
+              outputs=['modelfile/reload'], run_condition="ai_running")
+        V.add(TriggeredCallback(model_path2, model_reload_cb),
+              inputs=["modelfile/reload"], run_condition="ai_running")
+
+        #
+        # collect inputs to model for inference
+        #
+        if cfg.TRAIN_BEHAVIORS:
+            bh = BehaviorPart(cfg.BEHAVIOR_LIST)
+            V.add(bh, outputs=['behavior/state', 'behavior/label', "behavior/one_hot_state_array"])
+            try:
+                ctr.set_button_down_trigger('L1', bh.increment_state)
+            except:
+                pass
+
+            inputs = ['cam/image_array', "behavior/one_hot_state_array"]
+
+        elif cfg.USE_LIDAR:
+            inputs = ['cam/image_array', 'lidar/dist_array']
+
+        elif cfg.HAVE_ODOM:
+            inputs = ['cam/image_array', 'enc/speed']
+
+        elif model_path2 == "imu":
+            assert cfg.HAVE_IMU, 'Missing imu parameter in config'
+            # Run the pilot if the mode is not user.
+            inputs = ['cam/image_array',
+                    'imu/acl_x', 'imu/acl_y', 'imu/acl_z',
+                    'imu/gyr_x', 'imu/gyr_y', 'imu/gyr_z']
+        else:
+            inputs = ['cam/image_array']
+
+        #
+        # collect model inference outputs
+        #
+        outputs = ['pilot/angle', 'pilot/throttle']
+
+        if cfg.TRAIN_LOCALIZER:
+            outputs.append("pilot/loc")
+
+        #
+        # Add image transformations like crop or trapezoidal mask
+        #
+        if hasattr(cfg, 'TRANSFORMATIONS') and cfg.TRANSFORMATIONS:
+            from donkeycar.pipeline.augmentations import ImageAugmentation
+            V.add(ImageAugmentation(cfg, 'TRANSFORMATIONS'),
+                  inputs=['cam/image_array'], outputs=['cam/image_array_trans'])
+            inputs = ['cam/image_array_trans'] + inputs[1:]
+
+        V.add(kl, inputs=inputs, outputs=outputs, run_condition='run_pilot')
 
     #
     # stop at a stop sign
@@ -446,6 +546,13 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
                        pilot_throttle * cfg.AI_THROTTLE_MULT \
                            if pilot_throttle else 0.0
             elif mode == 'stop':
+                return 0, -.5
+            elif mode == 'user_reverse':
+                if GPIO.input(cfg.REQUEST_PIN) == 0:
+                    return 0, -.5
+                else:
+                    return user_angle, user_throttle
+            elif mode == 'local_reverse':
                 return 0, -.5
 
     V.add(DriveMode(),
@@ -556,7 +663,13 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
         cfg.AUTO_CREATE_NEW_TUB else cfg.DATA_PATH
     meta += getattr(cfg, 'METADATA', [])
     tub_writer = TubWriter(tub_path, inputs=inputs, types=types, metadata=meta)
-    V.add(tub_writer, inputs=inputs, outputs=["tub/num_records"], run_condition='recording')
+    V.add(tub_writer, inputs=inputs, outputs=["tub/num_records"], run_condition='recording_1')
+    
+    # do we want to store new records into own dir or append to existing
+    tub_path_2 = cfg.DATA_PATH_2
+    meta += getattr(cfg, 'METADATA', [])
+    tub_writer_2 = TubWriter(tub_path_2, inputs=inputs, types=types, metadata=meta)
+    V.add(tub_writer_2, inputs=inputs, outputs=["tub/num_records"], run_condition='recording_2')
 
     # Telemetry (we add the same metrics added to the TubHandler
     if cfg.HAVE_MQTT_TELEMETRY:
@@ -781,7 +894,28 @@ def add_camera(V, cfg, camera_type):
         threaded = True
         cam = get_camera(cfg)
         if cam:
-            V.add(cam, inputs=inputs, outputs=outputs, threaded=threaded)
+            class CameraFromMode:
+                def run(self, mode, recording):
+                    recording1 = False
+                    recording2 = False
+                    
+                    if mode == 'user' or  mode == 'local_angle'or mode == 'local':
+                        if recording:
+                            recording1 = True
+                            recording2 = False
+                        return recording1, recording2, True, False
+                    else:
+                        if recording:
+                            recording1 = False
+                            recording2 = True
+                        return recording1, recording2, False, True
+            V.add(CameraFromMode(), inputs=['user/mode', 'recording'], outputs=['recording_1','recording_2','front_camera', 'rear_camera'])
+            V.add(cam, inputs=inputs, outputs=outputs, threaded=threaded, run_condition='front_camera')
+            from donkeycar.parts.cv import CvCam
+            cam1 = CvCam(image_w=cfg.IMAGE_W, image_h=cfg.IMAGE_H, image_d=cfg.IMAGE_DEPTH, iCam=1)
+            V.add(cam1, inputs=inputs, outputs=outputs, threaded=threaded, run_condition='rear_camera')
+            
+            
 
 def add_odometry(V, cfg):
     """
@@ -1030,7 +1164,7 @@ if __name__ == '__main__':
     if args['drive']:
         model_type = args['--type']
         camera_type = args['--camera']
-        drive(cfg, model_path=args['--model'], use_joystick=args['--js'],
+        drive(cfg, model_path=args['--model'], model_path2=args['--model2'], use_joystick=args['--js'],
               model_type=model_type, camera_type=camera_type,
               meta=args['--meta'])
     elif args['train']:
