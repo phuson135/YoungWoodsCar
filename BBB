@@ -1,6 +1,15 @@
 #!/bin/bash
 echo --------------------------- SSH INTO BBB: debian@192.168.137.1 ---------------------------
 
+if [[ $1 = drive_throttle ]]
+then
+sshpass -p temppwd ssh -T debian@192.168.137.1 <<EOL
+    sleep 2
+    cd rcPWM/
+    python3 drive_throttle.py --log DEBUG
+EOL
+fi
+
 if [[ $1 = drive ]]
 then
 sshpass -p temppwd ssh -T debian@192.168.137.1 <<EOL

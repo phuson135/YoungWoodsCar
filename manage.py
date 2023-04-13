@@ -56,6 +56,10 @@ def drive(cfg, model_path=None, model_path2=None, use_joystick=False, model_type
     requesting the same named input.
     """
     GPIO.setwarnings(False)
+    GPIO.cleanup()
+    GPIO.setmode(GPIO.BOARD)
+    GPIO.setup(cfg.COMMAND_PIN, GPIO.OUT)
+    GPIO.setup(cfg.REQUEST_PIN, GPIO.IN)
     print(cfg.AUTO_RECORD_ON_THROTTLE)
     logger.info(f'PID: {os.getpid()}')
     if cfg.DONKEY_GYM:
@@ -535,8 +539,8 @@ def drive(cfg, model_path=None, model_path2=None, use_joystick=False, model_type
         def run(self, mode,
                     user_angle, user_throttle,
                     pilot_angle, pilot_throttle):
-            if GPIO.input(cfg.REQUEST_PIN) == 0:
-                    return 0, -.5
+            #if GPIO.input(cfg.REQUEST_PIN) == 0:
+            #        return 0, -.5
             if mode == 'user':
                 return user_angle, user_throttle
 
@@ -550,10 +554,7 @@ def drive(cfg, model_path=None, model_path2=None, use_joystick=False, model_type
             elif mode == 'stop':
                 return 0, -.5
             elif mode == 'user_reverse':
-                if GPIO.input(cfg.REQUEST_PIN) == 0:
-                    return 0, -.5
-                else:
-                    return user_angle, user_throttle
+                return user_angle, user_throttle
             elif mode == 'local_reverse':
                 return pilot_angle if pilot_angle else 0.0, \
                        pilot_throttle * cfg.AI_THROTTLE_MULT \
@@ -909,7 +910,7 @@ def add_camera(V, cfg, camera_type):
                     recording1 = False
                     recording2 = False
                     
-                    if mode == 'user' or  mode == 'local_angle'or mode == 'local':
+                    if mode == 'user' or  mode == 'local_angle'or mode == 'local' or mode == 'stop':
                         if recording:
                             recording1 = True
                             recording2 = False
